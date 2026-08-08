@@ -1,0 +1,18 @@
+# Theos build artifacts
+.theos/
+obj/
+build/
+packages/
+
+# macOS
+.DS_Store
+
+# Xcode
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+
+# Editor
+*.swp
+*.swo
+.vscode/
+.idea/

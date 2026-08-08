@@ -1,0 +1,9 @@
+Package: com.yourname.bilihomeblocker
+Name: BiliHomeBlocker
+Version: 2.0.0
+Architecture: iphoneos-arm64
+Description: 隐藏 B 站首页内容区和顶部 Tab 栏（基于 FLEX 调试结果）
+Maintainer: You <you@example.com>
+Author: You <you@example.com>
+Section: Tweaks
+Depends: mobilesubstrate (>= 0.9.5000)

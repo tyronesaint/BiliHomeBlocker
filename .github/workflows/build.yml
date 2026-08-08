@@ -1,0 +1,96 @@
+name: Build BiliHomeBlocker
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔧 Install dependencies
+        run: |
+          brew install ldid make
+          echo "PATH=$(brew --prefix make)/libexec/gnubin:$PATH" >> $GITHUB_ENV
+
+      - name: 📥 Download Theos
+        run: |
+          export THEOS=$HOME/theos
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          if [ ! -d "$THEOS" ]; then
+            git clone --recursive https://github.com/theos/theos.git $THEOS
+            echo "✅ Theos cloned"
+          else
+            echo "✅ Theos already cached"
+          fi
+
+      - name: 📥 Download iOS SDKs
+        run: |
+          export THEOS=$HOME/theos
+          mkdir -p $THEOS/sdks
+          if [ -z "$(ls -A $THEOS/sdks)" ]; then
+            cd /tmp
+            wget --no-verbose https://github.com/theos/sdks/archive/master.zip -O sdks.zip
+            unzip -q sdks.zip
+            mv sdks-master/*.sdk $THEOS/sdks/
+            rm -rf sdks.zip sdks-master
+            echo "✅ SDKs downloaded"
+          else
+            echo "✅ SDKs already cached"
+          fi
+          ls -la $THEOS/sdks/
+
+      - name: 🔨 Build with Theos
+        run: |
+          export THEOS=$HOME/theos
+          export PATH=$PATH:$THEOS/bin
+          make clean || true
+          make
+
+      - name: 📦 Package deb
+        run: |
+          export THEOS=$HOME/theos
+          export PATH=$PATH:$THEOS/bin
+          make package
+
+      - name: 🔍 Find artifacts
+        run: |
+          echo "=== dylib ==="
+          find .theos -name "*.dylib" -type f 2>/dev/null || echo "No dylib found"
+          echo "=== deb ==="
+          find packages -name "*.deb" -type f 2>/dev/null || echo "No deb found"
+          echo "=== all build artifacts ==="
+          find .theos -type f 2>/dev/null | head -30
+
+      - name: ⬆️ Upload dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiliHomeBlocker-dylib
+          path: |
+            .theos/obj/**/*.dylib
+          if-no-files-found: warn
+
+      - name: ⬆️ Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiliHomeBlocker-deb
+          path: |
+            packages/*.deb
+          if-no-files-found: warn
+
+      - name: 🚀 Release on tag
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            .theos/obj/**/*.dylib
+            packages/*.deb
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
